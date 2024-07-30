@@ -1,52 +1,147 @@
-# Prerequisites
-*.d
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h> // Para usar a função exit()
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+#define MAX_SIZE 100
 
-# Linker output
-*.ilk
-*.map
-*.exp
+// Estrutura para representar o tabuleiro
+typedef struct {
+    int size;
+    char board[MAX_SIZE][MAX_SIZE];
+    bool revealed[MAX_SIZE][MAX_SIZE];
+} Board;
 
-# Precompiled Headers
-*.gch
-*.pch
+// Função para inicializar o tabuleiro
+void initializeBoard(Board *board, int size) {
+    board->size = size;
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            board->board[i][j] = ' ';
+            board->revealed[i][j] = false;
+        }
+    }
+}
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
+// Função para imprimir o estado atual do tabuleiro (apenas para debug)
+void printBoard(Board *board) {
+    printf("Current Board State:\n");
+    for (int i = 0; i < board->size; ++i) {
+        for (int j = 0; j < board->size; ++j) {
+            if (board->revealed[i][j]) {
+                printf("%c ", board->board[i][j]);
+            } else {
+                printf(". ");
+            }
+        }
+        printf("\n");
+    }
+}
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+// Função para revelar os quadrados adjacentes se não tiverem minas
+void revealAdjacent(Board *board, int x, int y) {
+    // Verificações de limite para x e y
+    if (x < 0 || x >= board->size || y < 0 || y >= board->size)
+        return;
+    
+    // Se já foi revelado ou tem uma mina, não faz nada
+    if (board->revealed[x][y] || board->board[x][y] == 'b')
+        return;
+    
+    // Marca como revelado
+    board->revealed[x][y] = true;
+    
+    // Se for um espaço vazio, revele os adjacentes recursivamente
+    if (board->board[x][y] == 'x') {
+        revealAdjacent(board, x-1, y); // esquerda
+        revealAdjacent(board, x+1, y); // direita
+        revealAdjacent(board, x, y-1); // acima
+        revealAdjacent(board, x, y+1); // abaixo
+    }
+}
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+// Função principal para realizar o jogo
+void playGame(Board *board, int moves, int *moveX, int *moveY) {
+    for (int i = 0; i < moves; ++i) {
+        int x = moveX[i];
+        int y = moveY[i];
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+        if (x < 0 || x >= board->size || y < 0 || y >= board->size) {
+            printf("Coordenadas inválidas: (%d, %d)\n", x, y);
+            continue;
+        }
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+        if (board->board[x][y] == 'b') {
+            printf("PERDEU\n");
+            return;
+        }
+
+        if (!board->revealed[x][y]) {
+            board->revealed[x][y] = true;
+
+            if (board->board[x][y] == 'x') {
+                // Se for espaço vazio, revelar adjacentes
+                revealAdjacent(board, x, y);
+            }
+        }
+    }
+
+    // Verificar se todos os quadrados sem minas foram revelados
+    bool allClear = true;
+    for (int i = 0; i < board->size; ++i) {
+        for (int j = 0; j < board->size; ++j) {
+            if (board->board[i][j] != 'b' && !board->revealed[i][j]) {
+                allClear = false;
+                break;
+            }
+        }
+        if (!allClear) break;
+    }
+
+    if (allClear) {
+        printf("GANHOU\n");
+    } else {
+        printf("FALTOU TERMINAR\n");
+    }
+}
+
+int main() {
+    int numGames;
+    scanf("%d", &numGames);
+
+    for (int g = 0; g < numGames; ++g) {
+        int size;
+        scanf("%d", &size);
+
+        if (size <= 0 || size > MAX_SIZE) {
+            printf("Tamanho inválido do tabuleiro: %d\n", size);
+            exit(EXIT_FAILURE);
+        }
+
+        Board board;
+        initializeBoard(&board, size);
+
+        // Lendo o conteúdo do tabuleiro
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                scanf(" %c", &board.board[i][j]);
+            }
+        }
+
+        int moves;
+        scanf("%d", &moves);
+
+        if (moves <= 0 || moves > size * size) {
+            printf("Número inválido de movimentos: %d\n", moves);
+            exit(EXIT_FAILURE);
+        }
+
+        int moveX[MAX_SIZE], moveY[MAX_SIZE];
+        for (int i = 0; i < moves; ++i) {
+            scanf("%d %d", &moveX[i], &moveY[i]);
+        }
+
+        playGame(&board, moves, moveX, moveY);
+    }
+
+    return 0;
+}
